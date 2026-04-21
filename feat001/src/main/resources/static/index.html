@@ -2,85 +2,137 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>바이브 코딩 Todo List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Todo</title>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; justify-content: center; padding-top: 50px; background-color: #f4f4f9; }
-        .container { width: 400px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #333; }
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        button { padding: 8px 15px; background-color: #5c67f2; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        ul { list-style: none; padding: 0; }
-        li { display: flex; flex-direction: column; padding: 10px; border-bottom: 1px solid #eee; }
-        .todo-main { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .sub-todo-list { margin-left: 30px; margin-top: 10px; font-size: 0.9em; color: #555; }
-        .sub-todo-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .sub-input-group { margin-left: 30px; margin-top: 5px; display: flex; gap: 5px; }
-        .sub-input-group input { padding: 4px; font-size: 0.8em; }
-        .sub-input-group button { padding: 4px 8px; font-size: 0.8em; background-color: #28a745; }
-        .completed { text-decoration: line-through; color: #888; }
+        body { font-family: 'Inter', sans-serif; }
+        .completed { text-decoration: line-through; color: #9ca3af; }
+        .todo-item:hover .action-buttons { opacity: 1; }
+        .action-buttons { opacity: 0; transition: opacity 0.2s; }
+        .custom-checkbox:checked + .checkbox-visual { background-color: #6366f1; border-color: #6366f1; }
+        .custom-checkbox:checked + .checkbox-visual::after { content: '✓'; color: white; display: block; text-align: center; font-size: 10px; line-height: 18px; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h2>Todo List</h2>
-        <div class="input-group">
-            <input type="text" id="todoInput" placeholder="큰 주제를 입력하세요">
-            <button onclick="addTodo()">추가</button>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-slate-200/60 overflow-hidden">
+        <!-- Header -->
+        <div class="px-8 pt-8 pb-6">
+            <div class="flex justify-between items-center mb-1">
+                <h1 class="text-2xl font-bold text-slate-800">My Tasks</h1>
+                <span id="currentDate" class="text-sm font-medium text-slate-400"></span>
+            </div>
+            <p class="text-slate-400 text-sm">Stay organized and productive.</p>
         </div>
-        <ul id="todoList"></ul>
+
+        <!-- Add Todo Input -->
+        <div class="px-8 mb-6">
+            <div class="relative group">
+                <input type="text" id="todoInput" 
+                    placeholder="Add a new task..." 
+                    class="w-full pl-4 pr-12 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all text-slate-700 placeholder:text-slate-400">
+                <button onclick="addTodo()" 
+                    class="absolute right-2 top-1.5 p-1.5 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Todo List -->
+        <div class="px-6 pb-8">
+            <ul id="todoList" class="space-y-1">
+                <!-- Todos will be injected here -->
+            </ul>
+        </div>
     </div>
 
     <script>
         const API_URL = 'http://localhost:8081/api/todos';
+
+        // Set Current Date
+        function updateDate() {
+            const options = { weekday: 'long', month: 'long', day: 'numeric' };
+            const today = new Date();
+            document.getElementById('currentDate').innerText = today.toLocaleDateString('en-US', options);
+        }
 
         async function fetchTodos() {
             const res = await fetch(API_URL);
             const todos = await res.json();
             const list = document.getElementById('todoList');
             list.innerHTML = '';
+            
             todos.forEach(todo => {
                 const li = document.createElement('li');
+                li.className = 'todo-item group';
                 
-                // 메인 Todo 레이아웃
                 let html = `
-                    <div class="todo-main">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <input type="checkbox" ${todo.completed ? 'checked' : ''} onclick="toggleTodo(${todo.id})">
-                            <span class="${todo.completed ? 'completed' : ''}" style="font-weight:bold;">${todo.title}</span>
+                    <div class="flex flex-col py-2">
+                        <div class="flex items-center justify-between group">
+                            <div class="flex items-center gap-3 flex-1">
+                                <div class="relative flex items-center">
+                                    <input type="checkbox" ${todo.completed ? 'checked' : ''} 
+                                        onclick="toggleTodo(${todo.id})"
+                                        class="custom-checkbox absolute opacity-0 w-5 h-5 cursor-pointer z-10">
+                                    <div class="checkbox-visual w-5 h-5 border-2 border-slate-200 rounded-full transition-all"></div>
+                                </div>
+                                <span class="text-[15px] font-medium transition-all ${todo.completed ? 'completed' : 'text-slate-700'}">${todo.title}</span>
+                            </div>
+                            <div class="action-buttons flex items-center gap-1">
+                                <button onclick="editTodo(${todo.id}, '${todo.title}')" class="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 transition-all rounded-lg">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteTodo(${todo.id})" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all rounded-lg">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <button onclick="editTodo(${todo.id}, '${todo.title}')" style="background-color:#ffc107; margin-right:5px;">수정</button>
-                            <button onclick="deleteTodo(${todo.id})" style="background-color:#ff4d4d">삭제</button>
-                        </div>
-                    </div>
-                    <div class="sub-todo-list">
+                        
+                        <!-- Sub-todo list -->
+                        <div class="ml-8 mt-1 space-y-1 border-l-2 border-slate-50 pl-4">
+                            <div id="subTodos-${todo.id}" class="space-y-1">
                 `;
 
-                // 서브 Todo 목록
                 if (todo.subTodos) {
                     todo.subTodos.forEach(sub => {
                         html += `
-                            <div class="sub-todo-item">
-                                <span>- ${sub.content}</span>
-                                <button onclick="deleteSubTodo(${sub.id})" style="background-color:transparent; color:red; border:none; cursor:pointer; font-size:0.8em;">[x]</button>
+                            <div class="flex items-center justify-between py-1 group/sub">
+                                <span class="text-sm text-slate-500 flex-1">- ${sub.content}</span>
+                                <button onclick="deleteSubTodo(${sub.id})" class="opacity-0 group-hover/sub:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition-all">
+                                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                </button>
                             </div>
                         `;
                     });
                 }
 
-                // 서브 Todo 입력창
                 html += `
-                    </div>
-                    <div class="sub-input-group">
-                        <input type="text" id="subInput-${todo.id}" placeholder="작은 주제 추가">
-                        <button onclick="addSubTodo(${todo.id})">추가</button>
+                            </div>
+                            <!-- Add Sub-todo Input -->
+                            <div class="flex items-center gap-2 mt-2 opacity-60 hover:opacity-100 transition-opacity">
+                                <input type="text" id="subInput-${todo.id}" 
+                                    placeholder="Add sub-task..." 
+                                    class="bg-transparent border-none p-0 text-sm focus:ring-0 placeholder:text-slate-300 w-full">
+                                <button onclick="addSubTodo(${todo.id})" class="text-indigo-500 hover:text-indigo-600">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 `;
 
                 li.innerHTML = html;
                 list.appendChild(li);
             });
+            
+            // Re-initialize Lucide icons
+            lucide.createIcons();
         }
 
         async function addSubTodo(todoId) {
@@ -101,7 +153,8 @@
         }
 
         async function editTodo(id, currentTitle) {
-            const newTitle = prompt('수정할 내용을 입력하세요:', currentTitle);
+            // Using a simple prompt for now, could be upgraded to a modal
+            const newTitle = prompt('Edit task title:', currentTitle);
             if (!newTitle || newTitle === currentTitle) return;
 
             await fetch(`${API_URL}/${id}`, {
@@ -130,11 +183,20 @@
         }
 
         async function deleteTodo(id) {
-            await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            fetchTodos();
+            if (confirm('Delete this task?')) {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                fetchTodos();
+            }
         }
 
+        // Initialize
+        updateDate();
         fetchTodos();
+
+        // Listen for Enter key on inputs
+        document.getElementById('todoInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTodo();
+        });
     </script>
 </body>
 </html>
