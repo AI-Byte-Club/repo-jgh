@@ -30,9 +30,13 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/login", "/register", "/*.html", "/css/**", "/js/**").permitAll()
+                .requestMatchers("/", "/api/auth/**", "/login", "/register", "/*.html", "/page/**", "/css/**", "/js/**", "/admin", "/mypage").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN") // 관리자 API는 서버에서 강력하게 보호
                 .anyRequest().authenticated()
             )
+
+
+
             .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
