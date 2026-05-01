@@ -26,7 +26,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
         try {
-            memberService.register(request.getUsername(), request.getPassword());
+            memberService.register(request.getUsername(), request.getPassword(), request.getRole());
             return ResponseEntity.ok("Registration successful");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -46,6 +46,7 @@ public class AuthController {
         Map<String, String> response = new HashMap<>();
         response.put("token", token);
         response.put("username", member.getUsername());
+        response.put("role", member.getRole());
 
         return ResponseEntity.ok(response);
     }
@@ -54,6 +55,7 @@ public class AuthController {
     public static class RegisterRequest {
         private String username;
         private String password;
+        private String role;
     }
 
     @Data

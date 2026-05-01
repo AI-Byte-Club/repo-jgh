@@ -15,15 +15,18 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public void register(String username, String password) {
+    public void register(String username, String password, String role) {
         if (memberRepository.findByUsername(username).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
 
+        // 기본 권한 설정 (값이 없으면 BASIC)
+        String userRole = (role != null && !role.isEmpty()) ? role : "ROLE_USER_BASIC";
+
         Member member = Member.builder()
                 .username(username)
                 .password(passwordEncoder.encode(password))
-                .role("ROLE_USER")
+                .role(userRole)
                 .build();
 
         memberRepository.save(member);
