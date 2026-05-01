@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+        .register-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 { text-align: center; color: #333; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; color: #666; }
+        input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 1rem;
+            background-color: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 1rem;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #0082f3; }
+        .links { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
+        .links a { color: #4facfe; text-decoration: none; }
+        #message { text-align: center; margin-top: 1rem; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h2>회원가입</h2>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">사용자명</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">비밀번호</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">가입하기</button>
+        </form>
+        <div id="message"></div>
+        <div class="links">
+            이미 계정이 있으신가요? <a href="/login">로그인</a>
+        </div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const text = await response.text();
+                if (response.ok) {
+                    messageDiv.style.color = 'green';
+                    messageDiv.innerText = '회원가입 성공! 잠시 후 로그인 페이지로 이동합니다.';
+                    setTimeout(() => window.location.href = '/login', 2000);
+                } else {
+                    messageDiv.style.color = 'red';
+                    messageDiv.innerText = '실패: ' + text;
+                }
+            } catch (err) {
+                messageDiv.style.color = 'red';
+                messageDiv.innerText = '오류가 발생했습니다.';
+            }
+        });
+    </script>
+</body>
+</html>

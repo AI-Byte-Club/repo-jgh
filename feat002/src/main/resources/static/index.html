@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메인 페이지</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #1a73e8; }
+        p { color: #5f6368; font-size: 1.2rem; }
+        .logout-btn {
+            margin-top: 2rem;
+            padding: 0.8rem 2rem;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+        .logout-btn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>환영합니다!</h1>
+        <p id="welcome-msg">사용자 정보를 불러오는 중...</p>
+        <button onclick="auth.logout()" class="logout-btn">로그아웃</button>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        // 페이지 로드 시 인증 체크
+        auth.checkAuth();
+
+        // 저장된 사용자 이름 표시
+        const username = auth.getUsername();
+        if (username) {
+            document.getElementById('welcome-msg').innerText = `Welcome, ${username}! (JWT 인증됨)`;
+        }
+
+        // 실제 서버 데이터 확인 테스트 (헤더에 토큰 포함)
+        auth.fetchWithAuth('/')
+            .then(response => {
+                if (response && response.ok) {
+                    return response.text();
+                }
+            })
+            .then(text => {
+                if (text) console.log('Server verified auth:', text);
+            });
+    </script>
+</body>
+</html>
