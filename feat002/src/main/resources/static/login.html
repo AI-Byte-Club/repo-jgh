@@ -86,8 +86,8 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    auth.saveToken(data.token, data.username);
-                    window.location.href = '/';
+                    auth.saveToken(data.token, data.username, data.role);
+                    window.location.href = '/mypage';
                 } else {
                     const text = await response.text();
                     errorDiv.innerText = '로그인 실패: ' + text;

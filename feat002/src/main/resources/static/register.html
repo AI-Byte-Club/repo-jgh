@@ -62,6 +62,15 @@
                 <label for="password">비밀번호</label>
                 <input type="password" id="password" name="password" required>
             </div>
+            <div class="form-group">
+                <label for="role">회원 등급</label>
+                <select id="role" name="role" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="ROLE_USER_BASIC">일반 (BASIC)</option>
+                    <option value="ROLE_USER_PREMIUM">우수 (PREMIUM)</option>
+                    <option value="ROLE_USER_VIP">최고 (VIP)</option>
+                    <option value="ROLE_ADMIN">관리자 (ADMIN)</option>
+                </select>
+            </div>
             <button type="submit">가입하기</button>
         </form>
         <div id="message"></div>
@@ -76,13 +85,14 @@
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
             const messageDiv = document.getElementById('message');
 
             try {
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password, role })
                 });
 
                 const text = await response.text();
