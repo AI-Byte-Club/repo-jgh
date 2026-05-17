@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL 인덱스 성능 측정기</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', monospace;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #fff;
+            color: #000;
+            font-size: 12px;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 280px;
+            border-right: 1px solid #000;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h2, h3, h4 { margin: 0; font-size: 13px; border-bottom: 1px solid #000; padding-bottom: 5px; }
+
+        .tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+        .tab-btn {
+            background: #fff;
+            color: #000;
+            border: 1px solid #000;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .tab-btn.active { background: #000; color: #fff; }
+
+        .table-info { border: 1px solid #000; padding: 10px; background: #fafafa; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+        
+        button {
+            background: #fff;
+            color: #000;
+            border: 1px solid #000;
+            padding: 3px 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        button:hover { background: #eee; }
+        button:disabled { opacity: 0.3; }
+        
+        .btn-reset { color: #000; margin-top: 8px; width: 100%; border-style: dashed; font-weight: bold; }
+        .btn-index { font-size: 10px; border-color: #666; background: #fdfdfd; }
+
+        .index-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        /* Main Area */
+        #main {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .comparison-panel {
+            border: 2px solid #000;
+            padding: 12px;
+            margin-bottom: 20px;
+            display: none;
+            background: #fff;
+        }
+
+        .query-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+            gap: 15px;
+        }
+
+        .card {
+            border: 1px solid #000;
+            padding: 12px;
+            position: relative;
+            background: #fff;
+        }
+
+        .card strong { font-size: 13px; display: block; margin-bottom: 5px; }
+
+        pre {
+            background: #f0f0f0;
+            padding: 8px;
+            font-size: 11px;
+            margin: 8px 0;
+            white-space: pre-wrap;
+            border-left: 3px solid #000;
+            font-family: monospace;
+        }
+
+        .badge {
+            font-weight: bold;
+            padding: 2px 6px;
+            border: 1px solid #000;
+            font-size: 10px;
+        }
+        .badge-fast { background: #eee; }
+        .badge-slow { background: #000; color: #fff; }
+
+        .result-area { margin-top: 10px; }
+        .explain-area { margin-top: 10px; display: none; background: #eee; padding: 8px; border: 1px solid #000; }
+
+        table.res-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+            margin-top: 5px;
+        }
+        table.res-table th, table.res-table td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            text-align: left;
+        }
+        table.res-table th { background: #eee; }
+
+        .custom-query {
+            margin-top: 30px;
+            border-top: 2px solid #000;
+            padding-top: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 60px;
+            padding: 8px;
+            border: 1px solid #000;
+            font-family: monospace;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border: 1px solid #000;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .comp-grid { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+        .comp-box { flex: 1; border: 1px solid #000; padding: 8px; text-align: center; }
+        .comp-label { font-size: 10px; color: #666; display: block; margin-bottom: 3px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>DB 인덱스 테스트</h2>
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTable('article')">게시글</button>
+        <button class="tab-btn" onclick="switchTable('activityLog')">로그</button>
+        <button class="tab-btn" onclick="switchTable('reservation')">예약</button>
+        <button class="tab-btn" onclick="switchTable('jobqueue')">작업큐</button>
+    </div>
+
+    <div class="table-info">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <strong id="current-table-name">article</strong>
+            <span id="row-count">0</span> 건
+        </div>
+        
+        <div class="btn-group">
+            <button onclick="seedData(10000)">+1만</button>
+            <button onclick="seedData(100000)">+10만</button>
+            <button onclick="seedData(1000000)">+100만</button>
+        </div>
+        
+        <button class="btn-reset" onclick="resetData()">데이터 초기화 (TRUNCATE)</button>
+    </div>
+
+    <div id="index-management">
+        <h4>인덱스 관리</h4>
+        <div style="font-size: 10px; color: #666; margin-bottom: 5px;">* 버튼 클릭 시 인덱스 즉시 추가</div>
+        <div class="btn-group" id="preset-index-btns"></div>
+        <div class="index-list" id="index-list"></div>
+    </div>
+</div>
+
+<div id="main">
+    <header>
+        <div style="font-size: 16px; font-weight: bold;">[ SQL 성능 분석 도구 ]</div>
+        <button id="btn-comp-mode" onclick="toggleComparisonMode()" style="font-weight: bold;">비교 모드 시작</button>
+    </header>
+
+    <div class="comparison-panel" id="comparison-panel">
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+            <strong>성능 비교 모드</strong>
+            <button onclick="toggleComparisonMode()">모드 종료</button>
+        </div>
+        <div id="comp-content" style="font-size: 11px; margin-top: 5px; color: #444;">
+            방법: 쿼리 실행(이전) -> 인덱스 조작 -> 동일 쿼리 재실행(이후)
+        </div>
+        <div class="comp-grid" id="comp-grid" style="display:none">
+            <div class="comp-box"><span class="comp-label">이전 (Before)</span><span id="comp-before">-</span></div>
+            <div class="comp-box"><span class="comp-label">이후 (After)</span><span id="comp-after">-</span></div>
+            <div class="comp-box"><span class="comp-label">개선율 (Diff)</span><span id="comp-diff" style="font-weight:bold">-</span></div>
+        </div>
+    </div>
+
+    <div class="query-grid" id="query-cards"></div>
+
+    <div class="custom-query">
+        <h4>커스텀 SQL (SELECT 전용)</h4>
+        <textarea id="custom-sql" placeholder="분석하고 싶은 SELECT 문을 입력하세요."></textarea>
+        <div class="btn-group">
+            <button onclick="runCustomQuery()" style="font-weight: bold;">쿼리 실행</button>
+            <button onclick="explainCustomQuery()">실행 계획(EXPLAIN)</button>
+        </div>
+        <div id="custom-result" class="result-area"></div>
+        <div id="custom-explain" class="explain-area"></div>
+    </div>
+</div>
+
+<script>
+    let currentTable = 'article';
+    let comparisonMode = false;
+    let beforeMs = null;
+    let lastQueryId = null;
+
+    const PRESET_QUERIES = [
+        { id: 'q1', table: 'article', title: '게시글: 카테고리 필터링 + 최신순', sql: "SELECT id, category, writerId, title, content FROM article WHERE category = 10 ORDER BY id DESC LIMIT 20, 10" },
+        { id: 'q2', table: 'article', title: '게시글: 작성자별 조회 + 최신순', sql: "SELECT id, category, writerId, title, content FROM article WHERE writerId = 10 ORDER BY id DESC LIMIT 10, 10" },
+        { id: 'q3', table: 'activityLog', title: '로그: 특정 유저의 특정 날짜 이력', sql: "SELECT * FROM activityLog WHERE userId = 123 AND activityDate = '2024-07-31' ORDER BY activityDatetime DESC" },
+        { id: 'q4', table: 'activityLog', title: '로그: 유저 + 날짜 + 활동유형 정밀조회', sql: "SELECT * FROM activityLog WHERE userId = 123 AND activityDate = '2024-07-31' AND activityType = 'BUY' ORDER BY activityDatetime DESC" },
+        { id: 'q5', table: 'activityLog', title: '로그: 커버링 인덱스 미적용 (SELECT *)', sql: "SELECT * FROM activityLog WHERE activityDate = '2024-07-31' AND activityType = 'VISIT'" },
+        { id: 'q6', table: 'activityLog', title: '로그: 커버링 인덱스 적용 (컬럼 지정)', sql: "SELECT activityDate, activityType FROM activityLog WHERE activityDate = '2024-07-31' AND activityType = 'VISIT'" },
+        { id: 'q7', table: 'reservation', title: '예약: 이름 조건 검색 (풀스캔 유도)', sql: "SELECT * FROM reservation WHERE name = '김민준' ORDER BY regDt DESC" },
+        { id: 'q8', table: 'reservation', title: '예약: 날짜 + 이름 복합 검색', sql: "SELECT * FROM reservation WHERE reserveDate = '2024-08-09' AND name = '김민준'" },
+        { id: 'q9', table: 'jobqueue', title: '작업큐: 상태값별 대기 건수 조회', sql: "SELECT * FROM jobqueue WHERE status = 'W'" }
+    ];
+
+    const PRESET_INDEXES = {
+        article: [{ name: 'idx_category', cols: ['category'] }, { name: 'idx_writerId', cols: ['writerId'] }],
+        activityLog: [{ name: 'idx_userId', cols: ['userId'] }, { name: 'idx_userId_date', cols: ['userId', 'activityDate'] }, { name: 'idx_userId_date_type', cols: ['userId', 'activityDate', 'activityType'] }, { name: 'idx_covering', cols: ['activityDate', 'activityType'] }],
+        reservation: [{ name: 'idxRdate', cols: ['reserveDate'] }],
+        jobqueue: [{ name: 'idx_status', cols: ['status'] }]
+    };
+
+    function init() { switchTable('article'); }
+
+    async function switchTable(table) {
+        const tableMap = { article: '게시글(article)', activityLog: '로그(activityLog)', reservation: '예약(reservation)', jobqueue: '작업큐(jobqueue)' };
+        currentTable = table;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.onclick.toString().includes(`'${table}'`)));
+        document.getElementById('current-table-name').innerText = tableMap[table];
+        updateRowCount(); loadIndexes(); renderPresetIndexButtons(); renderQueryCards();
+    }
+
+    async function updateRowCount() {
+        const res = await fetch(`/api/count/${currentTable}`);
+        const data = await res.json();
+        document.getElementById('row-count').innerText = data.count.toLocaleString();
+    }
+
+    async function seedData(amount) {
+        const btn = event.target;
+        const txt = btn.innerText; btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+        try { await fetch(`/api/seed/${currentTable}?amount=${amount}`, { method: 'POST' }); updateRowCount(); } 
+        finally { btn.disabled = false; btn.innerText = txt; }
+    }
+
+    async function resetData() {
+        if (!confirm('정말 데이터를 초기화하시겠습니까?')) return;
+        await fetch(`/api/reset/${currentTable}`, { method: 'POST' });
+        updateRowCount();
+    }
+
+    async function loadIndexes() {
+        const res = await fetch(`/api/index/list/${currentTable}`);
+        const indexes = await res.json();
+        const listDiv = document.getElementById('index-list');
+        listDiv.innerHTML = '<h4 style="margin-top:10px; border:none;">현재 인덱스 목록</h4>';
+        const groups = {};
+        indexes.forEach(idx => { if (!groups[idx.Key_name]) groups[idx.Key_name] = []; groups[idx.Key_name].push(idx.Column_name); });
+        for (const name in groups) {
+            const item = document.createElement('div'); item.className = 'index-item';
+            item.innerHTML = `<div><strong>${name}</strong><br><small>${groups[name].join(',')}</small></div>
+                ${name !== 'PRIMARY' ? `<button onclick="dropIndex('${name}')" style="padding:1px 5px; font-size:9px;">삭제</button>` : ''}`;
+            listDiv.appendChild(item);
+        }
+    }
+
+    function renderPresetIndexButtons() {
+        const container = document.getElementById('preset-index-btns');
+        container.innerHTML = '';
+        (PRESET_INDEXES[currentTable] || []).forEach(idx => {
+            const btn = document.createElement('button'); btn.className = 'btn-index'; btn.innerText = `+ ${idx.name}`;
+            btn.onclick = () => addIndex(idx.name, idx.cols);
+            container.appendChild(btn);
+        });
+    }
+
+    async function addIndex(name, columns) {
+        await fetch('/api/index/add', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: currentTable, indexName: name, columns: columns }) });
+        loadIndexes();
+    }
+
+    async function dropIndex(name) {
+        await fetch('/api/index/drop', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: currentTable, indexName: name }) });
+        loadIndexes();
+    }
+
+    function renderQueryCards() {
+        const container = document.getElementById('query-cards');
+        container.innerHTML = '';
+        PRESET_QUERIES.forEach(q => {
+            if (q.table !== currentTable) return;
+            const card = document.createElement('div'); card.className = 'card';
+            card.innerHTML = `<strong>${q.title}</strong><pre>${q.sql}</pre>
+                <div class="btn-group">
+                    <button onclick="runPresetQuery('${q.id}')" style="font-weight:bold">실행</button>
+                    <button onclick="explainPresetQuery('${q.id}')">계획</button>
+                    <span id="time-${q.id}" class="badge" style="display:none"></span>
+                    <span id="count-${q.id}" style="margin-left:5px; font-size:10px; color:#666;"></span>
+                </div>
+                <div id="res-${q.id}" class="result-area"></div>
+                <div id="exp-${q.id}" class="explain-area"></div>`;
+            container.appendChild(card);
+        });
+    }
+
+    async function runPresetQuery(id) {
+        const q = PRESET_QUERIES.find(x => x.id === id);
+        const res = await fetch('/api/query/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql: q.sql }) });
+        const data = await res.json();
+        displayResult(id, data);
+        if (comparisonMode) handleComparison(id, data.executionTimeMs);
+    }
+
+    async function explainPresetQuery(id) {
+        const q = PRESET_QUERIES.find(x => x.id === id);
+        const res = await fetch('/api/query/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql: q.sql }) });
+        displayExplain(id, await res.json());
+    }
+
+    function displayResult(id, data) {
+        const timeBadge = document.getElementById(`time-${id}`);
+        const countSpan = document.getElementById(`count-${id}`);
+        const resArea = document.getElementById(`res-${id}`);
+        timeBadge.style.display = 'inline-block';
+        timeBadge.innerText = data.executionTimeMs + 'ms';
+        timeBadge.className = 'badge ' + (data.executionTimeMs < 100 ? 'badge-fast' : 'badge-slow');
+        countSpan.innerText = `[결과: ${data.rowCount}건]`;
+        if (data.rows && data.rows.length > 0) {
+            let html = '<button onclick="this.nextSibling.style.display=this.nextSibling.style.display==\'none\'?\'table\':\'none\'" style="font-size:9px; padding:1px 4px; margin-top:5px;">데이터 보기/숨기기</button>';
+            html += '<table class="res-table" style="display:none"><thead><tr>';
+            Object.keys(data.rows[0]).forEach(key => html += `<th>${key}</th>`);
+            html += '</tr></thead><tbody>';
+            data.rows.forEach(row => { html += '<tr>'; Object.values(row).forEach(val => html += `<td>${val}</td>`); html += '</tr>'; });
+            html += '</tbody></table>';
+            resArea.innerHTML = html;
+        }
+    }
+
+    function displayExplain(id, data) {
+        const expArea = document.getElementById(`exp-${id}`);
+        expArea.style.display = expArea.style.display === 'block' ? 'none' : 'block';
+        let html = '<div style="font-size:10px; font-weight:bold; margin-bottom:3px;">[실행 계획 요약]</div><table class="res-table"><thead><tr>';
+        const cols = ['type', 'key', 'rows', 'Extra'];
+        cols.forEach(c => html += `<th>${c}</th>`);
+        html += '</tr></thead><tbody>';
+        data.forEach(row => { html += '<tr>'; cols.forEach(c => html += `<td>${row[c] || ''}</td>`); html += '</tr>'; });
+        html += '</tbody></table>';
+        expArea.innerHTML = html;
+    }
+
+    async function runCustomQuery() {
+        const sql = document.getElementById('custom-sql').value;
+        const res = await fetch('/api/query/custom', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql }) });
+        const data = await res.json();
+        if (data.error) { alert(data.message); return; }
+        const resArea = document.getElementById('custom-result');
+        resArea.innerHTML = `<span class="badge">${data.executionTimeMs}ms</span> [${data.rowCount}건 조회됨]`;
+        if (data.rows && data.rows.length > 0) {
+            let html = '<table class="res-table"><thead><tr>';
+            Object.keys(data.rows[0]).forEach(key => html += `<th>${key}</th>`);
+            html += '</tr></thead><tbody>';
+            data.rows.forEach(row => { html += '<tr>'; Object.values(row).forEach(val => html += `<td>${val}</td>`); html += '</tr>'; });
+            html += '</tbody></table>';
+            resArea.innerHTML += html;
+        }
+    }
+
+    async function explainCustomQuery() {
+        const sql = document.getElementById('custom-sql').value;
+        const res = await fetch('/api/query/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql }) });
+        const data = await res.json();
+        const expArea = document.getElementById('custom-explain');
+        expArea.style.display = 'block';
+        let html = '<div style="font-size:10px; font-weight:bold; margin-bottom:3px;">[전체 실행 계획]</div><table class="res-table"><tbody>';
+        data.forEach(row => { Object.entries(row).forEach(([k, v]) => { html += `<tr><th>${k}</th><td>${v}</td></tr>`; }); });
+        html += '</tbody></table>';
+        expArea.innerHTML = html;
+    }
+
+    function toggleComparisonMode() {
+        comparisonMode = !comparisonMode;
+        document.getElementById('comparison-panel').style.display = comparisonMode ? 'block' : 'none';
+        const btn = document.getElementById('btn-comp-mode');
+        btn.innerText = comparisonMode ? '비교 모드 종료' : '비교 모드 시작';
+        if (!comparisonMode) { beforeMs = null; lastQueryId = null; document.getElementById('comp-grid').style.display = 'none'; document.getElementById('comp-content').style.display = 'block'; }
+    }
+
+    function handleComparison(id, currentMs) {
+        if (lastQueryId !== id) {
+            beforeMs = currentMs; lastQueryId = id;
+            document.getElementById('comp-before').innerText = beforeMs + 'ms';
+            document.getElementById('comp-after').innerText = '-';
+            document.getElementById('comp-diff').innerText = '-';
+            document.getElementById('comp-grid').style.display = 'flex';
+            document.getElementById('comp-content').style.display = 'none';
+        } else {
+            document.getElementById('comp-after').innerText = currentMs + 'ms';
+            const diff = beforeMs - currentMs;
+            const percent = beforeMs > 0 ? (diff / beforeMs * 100).toFixed(1) : 0;
+            const diffSpan = document.getElementById('comp-diff');
+            diffSpan.innerText = (percent > 0 ? '+' : '') + percent + '%';
+            diffSpan.style.color = percent >= 0 ? '#000' : '#d00';
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
