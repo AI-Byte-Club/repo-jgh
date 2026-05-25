@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+</head>
+<body>
+    <h1>테스트 페이지</h1>
+    
+    <div>
+        <button onclick="location.href='/test/success'">1. 정상 연동 테스트 (/test/success)</button>
+    </div><br>
+    
+    <div>
+        <button onclick="location.href='/test/timeout'">2. 타임아웃 테스트 (/test/timeout)</button>
+    </div><br>
+    
+    <div>
+        <button onclick="location.href='/test/retry'">3. 재시도(Retry) 테스트 (/test/retry)</button>
+    </div><br>
+    
+    <div>
+        <button onclick="location.href='/test/bulkhead'">4. 벌크헤드(Bulkhead) 테스트 (/test/bulkhead)</button>
+    </div><br>
+    
+    <div>
+        <button onclick="location.href='/test/circuit-breaker'">5. 서킷 브레이커 테스트 (/test/circuit-breaker)</button>
+    </div><br>
+    
+    <div>
+        <button onclick="location.href='/test/circuit-status'">6. 현재 서킷 상태 확인 (/test/circuit-status)</button>
+    </div>
+
+    <hr>
+    <p>참고: 서킷 브레이커 상태는 5번을 여러 번 호출하여 실패율이 50%를 넘으면 OPEN 상태로 변합니다.</p>
+</body>
+</html>
