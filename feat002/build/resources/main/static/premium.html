@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"><title>Premium 페이지</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #e8f5e9; }
+        .card { padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #4caf50; }
+        .back-link { margin-top: 1rem; display: inline-block; color: #666; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>✨ Premium 페이지입니다!</h1>
+        <p>우수 등급 회원님들을 위한 공간입니다.</p>
+        <a href="/mypage" class="back-link">마이페이지로 돌아가기</a>
+    </div>
+    <script src="/js/auth.js"></script>
+    <script>
+        auth.checkAuth();
+        const role = auth.getRole();
+        const allowed = ['ROLE_ADMIN', 'ROLE_USER_VIP', 'ROLE_USER_PREMIUM'];
+        if (!allowed.includes(role)) {
+            alert('Premium 등급 이상만 접근 가능합니다!');
+            window.location.href = '/mypage';
+        }
+    </script>
+</body>
+</html>

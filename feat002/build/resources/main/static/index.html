@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메인 페이지</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        /* 상단 상태 바 추가 */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+        .role-badge {
+            background: #1a73e8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 { color: #1a73e8; }
+        p { color: #5f6368; font-size: 1.2rem; }
+        .logout-btn {
+            margin-top: 2rem;
+            padding: 0.8rem 2rem;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+        .logout-btn:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="status-bar">
+        <div>VIBE LOGIN SERVICE</div>
+        <div>
+            <span id="user-display">사용자</span> 
+            <span id="role-display" class="role-badge">등급</span>
+        </div>
+    </div>
+    <div class="container">
+        <h1>환영합니다!</h1>
+        <p id="welcome-msg">사용자 정보를 불러오는 중...</p>
+        <button onclick="auth.logout()" class="logout-btn">로그아웃</button>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        // 페이지 로드 시 인증 체크
+        auth.checkAuth();
+
+        // 로그인이 되어 있다면 바로 마이페이지로 리다이렉트
+        if (auth.getToken()) {
+            window.location.href = '/mypage';
+        }
+
+        // 실제 서버 데이터 확인 테스트 (헤더에 토큰 포함)
+        auth.fetchWithAuth('/')
+            .then(response => {
+                if (response && response.ok) {
+                    return response.text();
+                }
+            })
+            .then(text => {
+                if (text) console.log('Server verified auth:', text);
+            });
+    </script>
+</body>
+</html>

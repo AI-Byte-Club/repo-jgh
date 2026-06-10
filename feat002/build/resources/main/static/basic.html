@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"><title>Basic 페이지</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f5f5f5; }
+        .card { padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #9e9e9e; }
+        .back-link { margin-top: 1rem; display: inline-block; color: #666; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🌱 Basic 페이지입니다!</h1>
+        <p>모든 회원이 입장 가능한 공간입니다.</p>
+        <a href="/mypage" class="back-link">마이페이지로 돌아가기</a>
+    </div>
+    <script src="/js/auth.js"></script>
+    <script>
+        auth.checkAuth();
+    </script>
+</body>
+</html>
